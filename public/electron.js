@@ -6,6 +6,7 @@ const isDev = require("electron-is-dev");
 let mainWindow;
 const Menu = electron.Menu;
 const os = require("os");
+let slpash;
 
 Menu.setApplicationMenu(false);
 
@@ -18,6 +19,7 @@ function createWindow() {
     width: 1300,
     height: 700,
     center: true,
+    show: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -25,11 +27,29 @@ function createWindow() {
     },
     icon: iconPath,
   });
+  slpash = new BrowserWindow({
+    width: 1300,
+    height: 700,
+    center: true,
+    frame: false,
+    transparent: true,
+    show: true,
+    alwaysOnTop: true,
+  });
+  slpash.loadURL(
+    isDev
+      ? `file://${path.join(__dirname, "./screen.html")}`
+      : `file://${path.join(__dirname, "../build/screen.html")}`
+  );
   mainWindow.loadURL(
     isDev
       ? "http://localhost:3000"
       : `file://${path.join(__dirname, "../build/index.html")}`
   );
+  mainWindow.once("ready-to-show", () => {
+    slpash.destroy();
+    mainWindow.show();
+  });
   mainWindow.on("closed", () => (mainWindow = null));
 }
 
