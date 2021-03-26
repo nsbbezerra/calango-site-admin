@@ -1,24 +1,23 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect } from "react";
+import { ChakraProvider, useColorMode } from "@chakra-ui/react";
+import theme from "./styles/theme";
+import { MemoryRouter as Router } from "react-router-dom";
+
+import Layout from "./components/layout";
 
 function App() {
+  const { setColorMode } = useColorMode();
+
+  useEffect(() => {
+    setColorMode("light");
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <ChakraProvider theme={theme} resetCSS={true}>
+        <Layout />
+      </ChakraProvider>
+    </Router>
   );
 }
 
