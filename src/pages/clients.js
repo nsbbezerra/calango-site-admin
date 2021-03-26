@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid,
   Table,
@@ -17,14 +17,41 @@ import {
   Icon,
   Text,
   Heading,
+  useToast,
+  Spinner,
+  Flex,
 } from "@chakra-ui/react";
 import MaskedInput from "react-text-mask";
 import { FaSearch, FaWhatsapp } from "react-icons/fa";
+import useFetch from "../hooks/useFetch";
+import { mutate as mutateGlobal } from "swr";
+import api from "../configs/axios";
 
 export default function Clients() {
+  const { data, error, mutate } = useFetch("/clients");
+  const toast = useToast();
+
   const [search, setSearch] = useState("all");
   const [text, setText] = useState("");
   const [cpf, setCpf] = useState("");
+
+  const [clients, setClients] = useState([]);
+
+  function showToast(message, status, title) {
+    toast({
+      title: title,
+      description: message,
+      status: status,
+      position: "bottom-right",
+    });
+  }
+
+  useEffect(() => {
+    console.log("DATA", data);
+    if (data !== undefined) {
+      setClients(data);
+    }
+  }, [data]);
 
   return (
     <>
@@ -94,42 +121,56 @@ export default function Clients() {
       </FormControl>
 
       <Box rounded="lg" p={5} borderWidth="1px" mt={10}>
-        <Table size="sm">
-          <Thead fontWeight="700">
-            <Tr>
-              <Td w="6%" textAlign="center">
-                Criar
-              </Td>
-              <Td w="6%" textAlign="center">
-                Comprar
-              </Td>
-              <Td w="40%">Nome</Td>
-              <Td>CPF</Td>
-              <Td>Email</Td>
-              <Td w="13%">Telefone</Td>
-            </Tr>
-          </Thead>
+        {clients.length === 0 ? (
+          <Flex justify="center" align="center">
+            <Spinner size="xl" colorScheme="purple" />
+          </Flex>
+        ) : (
+          <Table size="sm">
+            <Thead fontWeight="700">
+              <Tr>
+                <Td w="6%" textAlign="center">
+                  Criar
+                </Td>
+                <Td w="6%" textAlign="center">
+                  Comprar
+                </Td>
+                <Td w="40%">Nome</Td>
+                <Td>CPF</Td>
+                <Td>Email</Td>
+                <Td w="13%">Telefone</Td>
+              </Tr>
+            </Thead>
 
-          <Tbody>
-            <Tr>
-              <Td w="6%" textAlign="center">
-                <Switch colorScheme="purple" />
-              </Td>
-              <Td w="6%" textAlign="center">
-                <Switch colorScheme="purple" />
-              </Td>
-              <Td w="40%">Natanael dos Santos Bezerra</Td>
-              <Td>017.067.731-10</Td>
-              <Td>contato.nk.info@gmail.com</Td>
-              <Td w="13%">
-                <HStack>
-                  <Icon as={FaWhatsapp} />
-                  <Text>(63) 99971-1716</Text>
-                </HStack>
-              </Td>
-            </Tr>
-          </Tbody>
-        </Table>
+            <Tbody>
+              {clients.map((cli) => (
+                <Tr key={cli.id}>
+                  <Td w="6%" textAlign="center">
+                    <Switch
+                      colorScheme="purple"
+                      defaultChecked={cli.active_admin}
+                    />
+                  </Td>
+                  <Td w="6%" textAlign="center">
+                    <Switch
+                      colorScheme="purple"
+                      defaultChecked={cli.active_client}
+                    />
+                  </Td>
+                  <Td w="40%">{cli.name}</Td>
+                  <Td>{cli.cpf}</Td>
+                  <Td>{cli.email}</Td>
+                  <Td w="13%">
+                    <HStack>
+                      <Icon as={FaWhatsapp} />
+                      <Text>{cli.phone}</Text>
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
       </Box>
     </>
   );
