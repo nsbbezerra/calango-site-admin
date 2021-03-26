@@ -46,12 +46,121 @@ export default function Clients() {
     });
   }
 
+  if (error) {
+    if (error.message === "Network Error") {
+      alert(
+        "Sem conexão com o servidor, verifique sua conexão com a internet."
+      );
+    } else {
+      const statusCode = error.response.status || 400;
+      const typeError =
+        error.response.data.message || "Ocorreu um erro ao buscar";
+      const errorMesg = error.response.data.err || statusCode;
+      const errorMessageFinal = `${typeError} + Cod: ${errorMesg}`;
+      showToast(
+        errorMessageFinal,
+        "error",
+        statusCode === 401 ? "Erro Autorização" : "Erro no Cadastro"
+      );
+    }
+  }
+
   useEffect(() => {
-    console.log("DATA", data);
     if (data !== undefined) {
       setClients(data);
     }
   }, [data]);
+
+  async function handleAdmin(id, value) {
+    try {
+      const response = await api.put(`/bannadmin/${id}`, {
+        active_admin: value,
+      });
+      const updated = await data.map((cli) => {
+        if (cli.id === id) {
+          return { ...cli, active_admin: value };
+        }
+        return cli;
+      });
+      mutate(updated, false);
+      mutateGlobal(`/bannadmin/${id}`, {
+        id: id,
+        active_admin: value,
+      });
+      showToast(response.data.message, "success", "Sucesso");
+    } catch (error) {
+      const statusCode = error.response.status || 400;
+      const typeError =
+        error.response.data.message || "Ocorreu um erro ao buscar";
+      const errorMesg = error.response.data.err || statusCode;
+      const errorMessageFinal = `${typeError} + Cod: ${errorMesg}`;
+      showToast(
+        errorMessageFinal,
+        "error",
+        statusCode === 401 ? "Erro Autorização" : "Erro no Cadastro"
+      );
+    }
+  }
+
+  async function handleClient(id, value) {
+    try {
+      const response = await api.put(`/bannclient/${id}`, {
+        active_client: value,
+      });
+      const updated = await data.map((cli) => {
+        if (cli.id === id) {
+          return { ...cli, active_client: value };
+        }
+        return cli;
+      });
+      mutate(updated, false);
+      mutateGlobal(`/bannclient/${id}`, {
+        id: id,
+        active_client: value,
+      });
+      showToast(response.data.message, "success", "Sucesso");
+    } catch (error) {
+      const statusCode = error.response.status || 400;
+      const typeError =
+        error.response.data.message || "Ocorreu um erro ao buscar";
+      const errorMesg = error.response.data.err || statusCode;
+      const errorMessageFinal = `${typeError} + Cod: ${errorMesg}`;
+      showToast(
+        errorMessageFinal,
+        "error",
+        statusCode === 401 ? "Erro Autorização" : "Erro no Cadastro"
+      );
+    }
+  }
+
+  async function finderBySource() {
+    if (search === "cpf") {
+      if (cpf === "") {
+        await setClients(data);
+      } else {
+        let parse = cpf.replace(/([\u0300-\u036f]|[^0-9a-zA-Z])/g, "");
+        if (parse.length === 11) {
+          const frasesFiltradas = await data.filter((obj) => obj.cpf === cpf);
+          await setClients(frasesFiltradas);
+        } else {
+          showToast("Preencha o CPF corretamente", "warning", "Atenção");
+          return false;
+        }
+      }
+    }
+    if (search === "all") {
+      setClients(data);
+    }
+    if (search === "name") {
+      let termos = await text.split(" ");
+      let frasesFiltradas = await data.filter((frase) => {
+        return termos.reduce((resultadoAnterior, termoBuscado) => {
+          return resultadoAnterior && frase.name.includes(termoBuscado);
+        }, true);
+      });
+      await setClients(frasesFiltradas);
+    }
+  }
 
   return (
     <>
@@ -114,7 +223,12 @@ export default function Clients() {
               onChange={(e) => setText(e.target.value.toUpperCase())}
             />
           )}
-          <Button isFullWidth leftIcon={<FaSearch />} colorScheme="purple">
+          <Button
+            isFullWidth
+            leftIcon={<FaSearch />}
+            colorScheme="purple"
+            onClick={() => finderBySource()}
+          >
             Buscar
           </Button>
         </Grid>
@@ -149,12 +263,14 @@ export default function Clients() {
                     <Switch
                       colorScheme="purple"
                       defaultChecked={cli.active_admin}
+                      onChange={(e) => handleAdmin(cli.id, e.target.checked)}
                     />
                   </Td>
                   <Td w="6%" textAlign="center">
                     <Switch
                       colorScheme="purple"
                       defaultChecked={cli.active_client}
+                      onChange={(e) => handleClient(cli.id, e.target.checked)}
                     />
                   </Td>
                   <Td w="40%">{cli.name}</Td>

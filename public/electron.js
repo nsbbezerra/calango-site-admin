@@ -25,7 +25,6 @@ function createWindow() {
     },
     icon: iconPath,
   });
-  mainWindow.webContents.openDevTools();
   mainWindow.loadURL(
     isDev
       ? "http://localhost:3000"
