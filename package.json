@@ -66,10 +66,10 @@
     },
     "mac": {
       "target": "dmg",
-      "icon": "build/icone.icns"
+      "icon": "build/pmw.icns"
     },
     "win": {
-      "icon": "build/icone.ico",
+      "icon": "build/pmw.ico",
       "target": [
         {
           "target": "nsis",
@@ -81,7 +81,7 @@
     },
     "linux": {
       "target": "AppImage",
-      "icon": "build/icone.png",
+      "icon": "build/pmw.png",
       "category": "Office"
     }
   }
