@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Grid,
   Button,
@@ -33,14 +33,37 @@ import {
   PopoverFooter,
   PopoverArrow,
   PopoverCloseButton,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  IconButton,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
 } from "@chakra-ui/react";
-import { FaCheck, FaLock, FaSearch, FaUnlock, FaUserAlt } from "react-icons/fa";
+import {
+  FaCheck,
+  FaCogs,
+  FaEdit,
+  FaImage,
+  FaLock,
+  FaSearch,
+  FaTrash,
+  FaUnlock,
+  FaUserAlt,
+} from "react-icons/fa";
+import { MdKeyboardArrowUp } from "react-icons/md";
 import MaskedInput from "react-text-mask";
 import useFetch from "../hooks/useFetch";
 import { mutate as mutateGlobal } from "swr";
 import api from "../configs/axios";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { File, InputFile } from "../styles/uploader";
 
 export default function Raffles() {
   const { data, error, mutate } = useFetch("/findDesk");
@@ -52,10 +75,30 @@ export default function Raffles() {
 
   const [modal, setModal] = useState(false);
   const [justification, setJustification] = useState("");
+  const [modalImage, setModalImage] = useState(false);
+  const [imageRaffle, setImageRaffle] = useState("");
+  const [idRaffle, setIdRaffle] = useState(null);
+  const [loadingImage, setLoadingImage] = useState(false);
 
   const [raffles, setRaffles] = useState([]);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [thumbnail, setThumbnail] = useState(null);
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [modalInfo, setModalInfo] = useState("");
+  const [loadingInfo, setLoadingInfo] = useState(false);
+  const [alerta, setAlerta] = useState(false);
+
+  const previewThumbnail = useMemo(() => {
+    return thumbnail ? URL.createObjectURL(thumbnail) : null;
+  }, [thumbnail]);
+
+  async function removeThumbnail() {
+    await URL.revokeObjectURL(thumbnail);
+    setThumbnail(null);
+  }
 
   function showToast(message, status, title) {
     toast({
@@ -185,6 +228,139 @@ export default function Raffles() {
         }, true);
       });
       await setRaffles(frasesFiltradas);
+    }
+  }
+
+  async function handleUpdateImage(id) {
+    const result = await data.raffles.find((obj) => obj.id === id);
+    setImageRaffle(result.thumbnail);
+    setIdRaffle(result.id);
+    setModalImage(true);
+  }
+
+  async function sendUpdateImage() {
+    if (thumbnail === null) {
+      showToast("Selecione uma imagem para enviar", "warning", "Atenção");
+      return false;
+    }
+    setLoadingImage(true);
+    let imageData = new FormData();
+    imageData.append("thumbnail", thumbnail);
+    try {
+      const response = await api.put(`/raffleEditImage/${idRaffle}`, imageData);
+      const updated = await data.raffles.map((raff) => {
+        if (raff.id === idRaffle) {
+          return { ...raff, thumbnail: response.data.newRaffle[0].thumbnail };
+        }
+        return raff;
+      });
+
+      let info = { raffles: updated, url: url };
+      mutate(info, false);
+      mutateGlobal(`/raffleEditImage/${idRaffle}`, info);
+      setThumbnail(null);
+      removeThumbnail();
+      setModalImage(false);
+      setLoadingImage(false);
+      showToast(response.data.message, "success", "Sucesso");
+    } catch (error) {
+      setLoadingImage(false);
+      const statusCode = error.response.status || 400;
+      const typeError =
+        error.response.data.message || "Ocorreu um erro ao buscar";
+      const errorMesg = error.response.data.err || statusCode;
+      const errorMessageFinal = `${typeError} + Cod: ${errorMesg}`;
+      showToast(
+        errorMessageFinal,
+        "error",
+        statusCode === 401 ? "Erro Autorização" : "Erro no Cadastro"
+      );
+    }
+  }
+
+  async function handleUpdateInfo(id) {
+    const result = await data.raffles.find((obj) => obj.id === id);
+    setName(result.name);
+    setDescription(result.description);
+    setIdRaffle(result.id);
+    setModalInfo(true);
+  }
+
+  async function sendUpdateInfo() {
+    if (name === "") {
+      showToast("Insira um nome", "warning", "Atenção");
+      return false;
+    }
+    if (description === "") {
+      showToast("Insira uma descrição", "warning", "Atenção");
+      return false;
+    }
+    setLoadingInfo(true);
+    try {
+      const response = await api.put(`/raffleEditInfo/${idRaffle}`, {
+        name,
+        description,
+      });
+      const updated = await data.raffles.map((raff) => {
+        if (raff.id === idRaffle) {
+          return {
+            ...raff,
+            name: response.data.newRaffle[0].name,
+            description: response.data.newRaffle[0].description,
+          };
+        }
+        return raff;
+      });
+
+      let info = { raffles: updated, url: url };
+      mutate(info, false);
+      mutateGlobal(`/raffleEditInfo/${idRaffle}`, info);
+      showToast(response.data.message, "success", "Sucesso");
+      setModalInfo(false);
+      setLoadingInfo(false);
+    } catch (error) {
+      setLoadingInfo(false);
+      const statusCode = error.response.status || 400;
+      const typeError =
+        error.response.data.message || "Ocorreu um erro ao buscar";
+      const errorMesg = error.response.data.err || statusCode;
+      const errorMessageFinal = `${typeError} + Cod: ${errorMesg}`;
+      showToast(
+        errorMessageFinal,
+        "error",
+        statusCode === 401 ? "Erro Autorização" : "Erro no Cadastro"
+      );
+    }
+  }
+
+  function handleRemove(id) {
+    setIdRaffle(id);
+    setAlerta(true);
+  }
+
+  async function sendRemoveRaffle() {
+    setLoadingInfo(true);
+    try {
+      const response = await api.delete(`/raffleDelete/${idRaffle}`);
+      const newRaffles = await data.raffles.filter(
+        (obj) => obj.id !== idRaffle
+      );
+      setLoadingInfo(false);
+      setAlerta(false);
+      setRaffles(newRaffles);
+      showToast(response.data.message, "success", "Sucesso");
+    } catch (error) {
+      setLoadingInfo(false);
+      const statusCode = error.response.status || 400;
+      const typeError =
+        error.response.data.message || "Ocorreu um erro ao buscar";
+      const errorMesg = error.response.data.err || statusCode;
+      const errorMessageFinal = `${typeError} + Cod: ${errorMesg}`;
+      showToast(
+        errorMessageFinal,
+        "error",
+        statusCode === 401 ? "Erro Autorização" : "Erro no Cadastro"
+      );
     }
   }
 
@@ -438,7 +614,7 @@ export default function Raffles() {
                   </Grid>
                 )}
                 {raf.status === "open" && (
-                  <Grid templateColumns="1fr" gap="10px" mt={2}>
+                  <Grid templateColumns="1fr 1fr" gap="10px" mt={2}>
                     <Popover>
                       <PopoverTrigger>
                         <Button
@@ -478,40 +654,84 @@ export default function Raffles() {
                         </PopoverFooter>
                       </PopoverContent>
                     </Popover>
+
+                    <Menu placement="top">
+                      <MenuButton
+                        as={Button}
+                        rightIcon={<MdKeyboardArrowUp />}
+                        size="sm"
+                        colorScheme="purple"
+                        isFullWidth
+                        variant="outline"
+                      >
+                        Opções
+                      </MenuButton>
+                      <MenuList
+                        shadow="lg"
+                        borderWidth="2px"
+                        borderColor="green.400"
+                      >
+                        <MenuItem
+                          _active={{ bg: "purple.100", color: "white" }}
+                          _focus={{ bg: "transparent" }}
+                          _hover={{ bg: "purple.100", color: "white" }}
+                          icon={<FaEdit />}
+                          onClick={() => handleUpdateInfo(raf.id)}
+                        >
+                          Alterar Informações
+                        </MenuItem>
+                        <MenuItem
+                          _active={{ bg: "purple.100", color: "white" }}
+                          _focus={{ bg: "transparent" }}
+                          _hover={{ bg: "purple.100", color: "white" }}
+                          icon={<FaImage />}
+                          onClick={() => handleUpdateImage(raf.id)}
+                        >
+                          Alterar Imagem
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
                   </Grid>
                 )}
                 {raf.status === "refused" && (
-                  <Grid templateColumns="1fr" gap="10px" mt={2}>
-                    <Popover>
-                      <PopoverTrigger>
-                        <Button
-                          size="sm"
-                          shadow="md"
-                          colorScheme="green"
-                          leftIcon={<FaUnlock />}
-                        >
-                          Liberar
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent shadow="lg" _focus={{ outline: "none" }}>
-                        <PopoverArrow />
-                        <PopoverCloseButton />
-                        <PopoverHeader>Liberação</PopoverHeader>
-                        <PopoverBody>Deseja liberar este sorteio?</PopoverBody>
-                        <PopoverFooter d="flex" justifyContent="flex-end">
-                          <Button
-                            leftIcon={<FaUnlock />}
-                            colorScheme="green"
-                            size="sm"
-                            isLoading={loading}
-                            onClick={() => updateRaffle(raf.id, "open")}
-                          >
-                            Liberar
-                          </Button>
-                        </PopoverFooter>
-                      </PopoverContent>
-                    </Popover>
-                  </Grid>
+                  <Menu placement="top">
+                    <MenuButton
+                      as={Button}
+                      rightIcon={<MdKeyboardArrowUp />}
+                      isFullWidth
+                      size="sm"
+                      mt={2}
+                      colorScheme="purple"
+                      leftIcon={<FaCogs />}
+                      variant="outline"
+                    >
+                      Opções
+                    </MenuButton>
+                    <MenuList
+                      shadow="lg"
+                      borderWidth="2px"
+                      borderColor="green.400"
+                    >
+                      <MenuItem
+                        onClick={() => updateRaffle(raf.id, "open")}
+                        _active={{ bg: "purple.100", color: "white" }}
+                        _focus={{ bg: "transparent" }}
+                        _hover={{ bg: "purple.100", color: "white" }}
+                        icon={<FaUnlock />}
+                      >
+                        Liberar
+                      </MenuItem>
+                      <MenuItem
+                        _active={{ bg: "purple.100", color: "white" }}
+                        _focus={{ bg: "transparent" }}
+                        _hover={{ bg: "purple.100", color: "white" }}
+                        icon={<FaTrash />}
+                        onClick={() => handleRemove(raf.id)}
+                      >
+                        Excluir
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
                 )}
                 {raf.status === "drawn" && (
                   <Grid templateColumns="1fr" gap="10px" mt={2}>
@@ -562,6 +782,137 @@ export default function Raffles() {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      <Modal isOpen={modalImage} onClose={() => setModalImage(false)}>
+        <ModalOverlay />
+        <ModalContent maxW="3xl">
+          <ModalHeader>Alterar Imagem</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Grid
+              templateColumns="300px 300px"
+              gap="30px"
+              justifyContent="center"
+            >
+              <FormControl>
+                <FormLabel>Imagem Atual</FormLabel>
+                <Box w="300px" h="300px" overflow="hidden" rounded="lg">
+                  <Image src={`${url}/${imageRaffle}`} w="300px" h="300px" />
+                </Box>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Nova Imagem</FormLabel>
+                {thumbnail ? (
+                  <Box w="300px" h="300px" rounded="lg" overflow="hidden">
+                    <Image w="300px" h="300px" src={previewThumbnail} />
+                    <IconButton
+                      icon={<FaTrash />}
+                      rounded="full"
+                      colorScheme="red"
+                      mt={-20}
+                      ml="130px"
+                      shadow="dark-lg"
+                      onClick={() => removeThumbnail()}
+                    />
+                  </Box>
+                ) : (
+                  <InputFile lar={300} alt={300}>
+                    <File
+                      type="file"
+                      onChange={(event) => setThumbnail(event.target.files[0])}
+                      id="image"
+                    />
+                    <FaImage style={{ fontSize: 50, marginBottom: 20 }} />
+                    <p style={{ fontSize: "13px" }}>
+                      Insira uma imagem 220px x 220px com no máximo 300kb
+                    </p>
+                  </InputFile>
+                )}
+              </FormControl>
+            </Grid>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button
+              colorScheme="green"
+              leftIcon={<FaEdit />}
+              onClick={() => sendUpdateImage()}
+              isLoading={loadingImage}
+            >
+              Alterar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={modalInfo} onClose={() => setModalInfo(false)}>
+        <ModalOverlay />
+        <ModalContent maxW="3xl">
+          <ModalHeader>Alterar Informações</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <FormControl>
+              <FormLabel>Nome do Sorteio</FormLabel>
+              <Input
+                focusBorderColor="purple.400"
+                value={name}
+                onChange={(e) => setName(e.target.value.toUpperCase())}
+              />
+            </FormControl>
+
+            <FormControl mt={3}>
+              <FormLabel>Descrição</FormLabel>
+              <Textarea
+                focusBorderColor="purple.400"
+                value={description}
+                onChange={(e) => setDescription(e.target.value.toUpperCase())}
+                rows={4}
+              />
+            </FormControl>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button
+              colorScheme="green"
+              leftIcon={<FaEdit />}
+              onClick={() => sendUpdateInfo()}
+              isLoading={loadingInfo}
+            >
+              Alterar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <AlertDialog isOpen={alerta} onClose={() => setAlerta(false)}>
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Excluir Sorteio
+            </AlertDialogHeader>
+
+            <AlertDialogBody>Deseja excluir este sorteio?</AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button
+                colorScheme="green"
+                variant="outline"
+                onClick={() => setAlerta(false)}
+              >
+                Não
+              </Button>
+              <Button
+                colorScheme="green"
+                ml={3}
+                isLoading={loadingInfo}
+                onClick={() => sendRemoveRaffle()}
+              >
+                Sim
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 }

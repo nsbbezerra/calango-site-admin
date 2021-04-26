@@ -27,6 +27,7 @@ function createWindow() {
     },
     icon: iconPath,
   });
+  mainWindow.webContents.openDevTools();
   slpash = new BrowserWindow({
     width: 1300,
     height: 700,

@@ -249,10 +249,10 @@ export default function Clients() {
                 <Td w="6%" textAlign="center">
                   Comprar
                 </Td>
-                <Td w="40%">Nome</Td>
+                <Td w="35%">Nome</Td>
                 <Td>CPF</Td>
                 <Td>Email</Td>
-                <Td w="13%">Telefone</Td>
+                <Td w="15%">Telefone</Td>
               </Tr>
             </Thead>
 
@@ -273,10 +273,10 @@ export default function Clients() {
                       onChange={(e) => handleClient(cli.id, e.target.checked)}
                     />
                   </Td>
-                  <Td w="40%">{cli.name}</Td>
+                  <Td w="35%">{cli.name}</Td>
                   <Td>{cli.cpf}</Td>
                   <Td>{cli.email}</Td>
-                  <Td w="13%">
+                  <Td w="15%">
                     <HStack>
                       <Icon as={FaWhatsapp} />
                       <Text>{cli.phone}</Text>
